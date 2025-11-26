@@ -1,21 +1,24 @@
 # DevOps Agent
 
-A Spring Boot application built with Java 21 and Gradle that serves as a DevOps agent to monitor AWS resources, specifically AWS CodePipeline status and CloudWatch alarms.
+A Spring Boot application built with Java 17 and Gradle that serves as a DevOps agent to monitor AWS resources and GitHub pull requests, providing unified visibility into AWS CodePipeline status, CloudWatch alarms, and GitHub PR status.
 
 ## Features
 
 - ✅ Monitor AWS CodePipeline status and execution history
 - ✅ Retrieve CloudWatch alarms and their states
+- ✅ Fetch open GitHub pull requests with their status
 - ✅ RESTful API endpoints for easy integration
-- ✅ Built with Spring Boot 3.2.0 and Java 21
+- ✅ Built with Spring Boot 3.2.0 and Java 17
 - ✅ AWS SDK v2 integration
+- ✅ GitHub API integration
 
 ## Prerequisites
 
-- Java 21 or higher
+- Java 17 or higher
 - Gradle 8.5 or higher (included via Gradle wrapper)
-- AWS account with appropriate credentials configured
+- AWS account with appropriate credentials configured (for AWS features)
 - AWS CLI configured or environment variables set for AWS credentials
+- Optional: GitHub Personal Access Token (for higher API rate limits)
 
 ## AWS Credentials Configuration
 
@@ -40,6 +43,26 @@ The application uses AWS SDK's default credential provider chain. You can config
    [default]
    region = us-east-1
    ```
+
+## GitHub Configuration
+
+The application can fetch pull requests from GitHub repositories. Configuration options:
+
+1. **Using Environment Variables:**
+   ```bash
+   export GITHUB_REPOSITORY_OWNER=sdc-pune
+   export GITHUB_REPOSITORY_NAME=devOps-agent
+   export GITHUB_TOKEN=your_github_personal_access_token  # Optional, for higher rate limits
+   ```
+
+2. **Using Application Properties:** Edit `src/main/resources/application.properties`
+   ```properties
+   github.repository.owner=sdc-pune
+   github.repository.name=devOps-agent
+   github.token=your_token  # Optional
+   ```
+
+**Note:** The GitHub token is optional. Without it, the application uses anonymous access with lower API rate limits (60 requests/hour). With authentication, you get 5000 requests/hour.
 
 ## Building the Application
 
@@ -184,6 +207,48 @@ Returns details of a specific alarm.
 curl http://localhost:8080/api/alarms/my-alarm
 ```
 
+### Pull Request Endpoints
+
+#### Get All Open Pull Requests
+```bash
+GET /api/pull-requests
+```
+Returns all open pull requests from the configured GitHub repository.
+
+**Example:**
+```bash
+curl http://localhost:8080/api/pull-requests
+```
+
+**Response:**
+```json
+[
+  {
+    "number": 123,
+    "title": "Add new feature",
+    "state": "OPEN",
+    "status": "SUCCESS",
+    "author": "username",
+    "url": "https://github.com/sdc-pune/devOps-agent/pull/123",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-15T15:45:00Z",
+    "branch": "feature-branch",
+    "baseBranch": "main"
+  }
+]
+```
+
+#### Get Specific Pull Request
+```bash
+GET /api/pull-requests/{number}
+```
+Returns details of a specific pull request by number.
+
+**Example:**
+```bash
+curl http://localhost:8080/api/pull-requests/123
+```
+
 ### Health Check
 ```bash
 GET /actuator/health
@@ -205,6 +270,11 @@ server.port=8080
 
 # AWS Configuration
 aws.region=us-east-1
+
+# GitHub Configuration
+github.repository.owner=sdc-pune
+github.repository.name=devOps-agent
+# github.token=<optional-token-for-higher-rate-limits>
 
 # Logging Configuration
 logging.level.root=INFO
@@ -239,12 +309,13 @@ logging.level.com.devops.agent=DEBUG
 
 ## Technology Stack
 
-- **Java 21** - Latest LTS version of Java
+- **Java 17** - LTS version of Java
 - **Spring Boot 3.2.0** - Application framework
 - **Gradle 8.5** - Build tool
 - **AWS SDK v2** - AWS service integration
   - CodePipeline Client
   - CloudWatch Client
+- **GitHub API (Kohsuke)** - GitHub integration
 - **Lombok** - Reduce boilerplate code
 
 ## Project Structure
@@ -256,16 +327,20 @@ devops-agent/
 │   │   ├── java/com/devops/agent/
 │   │   │   ├── DevOpsAgentApplication.java    # Main application class
 │   │   │   ├── config/
-│   │   │   │   └── AwsConfig.java              # AWS client configuration
+│   │   │   │   ├── AwsConfig.java              # AWS client configuration
+│   │   │   │   └── GitHubConfig.java           # GitHub client configuration
 │   │   │   ├── controller/
 │   │   │   │   ├── AlarmController.java        # Alarm REST endpoints
-│   │   │   │   └── PipelineController.java     # Pipeline REST endpoints
+│   │   │   │   ├── PipelineController.java     # Pipeline REST endpoints
+│   │   │   │   └── PullRequestController.java  # Pull Request REST endpoints
 │   │   │   ├── model/
 │   │   │   │   ├── AlarmResponse.java          # Alarm DTO
-│   │   │   │   └── PipelineStatusResponse.java # Pipeline DTO
+│   │   │   │   ├── PipelineStatusResponse.java # Pipeline DTO
+│   │   │   │   └── PullRequestResponse.java    # Pull Request DTO
 │   │   │   └── service/
 │   │   │       ├── AlarmService.java           # CloudWatch alarm service
-│   │   │       └── PipelineService.java        # CodePipeline service
+│   │   │       ├── PipelineService.java        # CodePipeline service
+│   │   │       └── GitHubService.java          # GitHub service
 │   │   └── resources/
 │   │       └── application.properties          # Application configuration
 │   └── test/

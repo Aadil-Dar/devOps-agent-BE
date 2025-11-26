@@ -8,8 +8,8 @@ group = 'com.devops'
 version = '1.0.0'
 
 java {
-    sourceCompatibility = '21'
-    targetCompatibility = '21'
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
 }
 
 repositories {
@@ -25,6 +25,9 @@ dependencies {
     implementation platform('software.amazon.awssdk:bom:2.21.0')
     implementation 'software.amazon.awssdk:codepipeline'
     implementation 'software.amazon.awssdk:cloudwatch'
+    
+    // GitHub API
+    implementation 'org.kohsuke:github-api:1.317'
     
     // Lombok for reducing boilerplate
     compileOnly 'org.projectlombok:lombok:1.18.30'
