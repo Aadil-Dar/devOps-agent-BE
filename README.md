@@ -53,15 +53,56 @@ The application uses AWS SDK's default credential provider chain. You can config
 
 ## Running the Application
 
+### Option 1: Using Gradle
 ```bash
-# Using Gradle
 ./gradlew bootRun
+```
 
-# Using the JAR file
+### Option 2: Using the JAR file
+```bash
 java -jar build/libs/devops-agent-1.0.0.jar
 ```
 
+### Option 3: Using Docker
+```bash
+# Build the application first
+./gradlew clean build -x test
+
+# Build Docker image
+docker build -t devops-agent:1.0.0 .
+
+# Run the container
+docker run -d \
+  -p 8080:8080 \
+  -e AWS_ACCESS_KEY_ID=your_access_key \
+  -e AWS_SECRET_ACCESS_KEY=your_secret_key \
+  -e AWS_REGION=us-east-1 \
+  --name devops-agent \
+  devops-agent:1.0.0
+```
+
+### Option 4: Using Docker Compose
+```bash
+# Build the application first
+./gradlew clean build -x test
+
+# Start with docker-compose
+docker-compose up -d
+```
+
 The application will start on port 8080 by default.
+
+## Running with Different Profiles
+
+You can run the application with different Spring profiles:
+
+```bash
+# Development profile
+java -jar build/libs/devops-agent-1.0.0.jar --spring.profiles.active=dev
+
+# Production profile
+java -jar build/libs/devops-agent-1.0.0.jar --spring.profiles.active=prod
+```
 
 ## API Endpoints
 
