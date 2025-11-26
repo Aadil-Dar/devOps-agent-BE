@@ -16,12 +16,6 @@ public class GitHubConfig {
     @Value("${github.token:#{null}}")
     private String githubToken;
 
-    @Value("${github.repository.owner:sdc-pune}")
-    private String repositoryOwner;
-
-    @Value("${github.repository.name:devOps-agent}")
-    private String repositoryName;
-
     @Bean
     public GitHub gitHubClient() {
         try {
@@ -36,15 +30,5 @@ public class GitHubConfig {
             log.error("Failed to initialize GitHub client", e);
             throw new RuntimeException("Failed to initialize GitHub client", e);
         }
-    }
-
-    @Bean
-    public String repositoryOwner() {
-        return repositoryOwner;
-    }
-
-    @Bean
-    public String repositoryName() {
-        return repositoryName;
     }
 }

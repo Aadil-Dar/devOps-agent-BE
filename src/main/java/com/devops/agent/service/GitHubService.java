@@ -85,6 +85,7 @@ public class GitHubService {
 
     /**
      * Get the commit status for the PR head
+     * Returns UNKNOWN if status cannot be retrieved to avoid rate limiting issues
      */
     private String getCommitStatus(GHPullRequest pr) {
         try {
@@ -94,10 +95,10 @@ public class GitHubService {
             if (lastStatus != null) {
                 return lastStatus.getState().name();
             }
-            return "UNKNOWN";
-        } catch (IOException e) {
-            log.warn("Could not fetch commit status for PR #{}: {}", pr.getNumber(), e.getMessage());
-            return "UNKNOWN";
+        } catch (Exception e) {
+            // Log at debug level to avoid noise - status retrieval is optional
+            log.debug("Could not fetch commit status for PR #{}: {}", pr.getNumber(), e.getMessage());
         }
+        return "UNKNOWN";
     }
 }
