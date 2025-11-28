@@ -190,6 +190,177 @@ HTTP 400 Bad Request
 HTTP 500 Internal Server Error
 ```
 
+## Vulnerability APIs
+
+### 1. List All Vulnerabilities
+```bash
+curl -X GET http://localhost:8080/api/vulnerabilities
+```
+
+Expected Response:
+```json
+[
+  {
+    "findingId": "arn:aws:securityhub:us-east-1:123456789012:subscription/...",
+    "title": "EC2 instance has unrestricted SSH access",
+    "severity": "CRITICAL",
+    "status": "NEW",
+    "description": "Security group allows SSH access from 0.0.0.0/0",
+    "resourceType": "AwsEc2Instance",
+    "resourceIds": ["i-1234567890abcdef0"],
+    "firstObservedAt": "2024-01-15T10:00:00Z",
+    "lastObservedAt": "2024-01-15T15:30:00Z",
+    "remediationText": "Restrict SSH access to specific IP ranges",
+    "complianceStatus": "FAILED"
+  }
+]
+```
+
+### 2. Get Vulnerabilities by Severity
+
+#### Get Critical Vulnerabilities
+```bash
+curl -X GET http://localhost:8080/api/vulnerabilities/severity/CRITICAL
+```
+
+#### Get High Severity Vulnerabilities
+```bash
+curl -X GET http://localhost:8080/api/vulnerabilities/severity/HIGH
+```
+
+#### Get Medium Severity Vulnerabilities
+```bash
+curl -X GET http://localhost:8080/api/vulnerabilities/severity/MEDIUM
+```
+
+Expected Response:
+```json
+[
+  {
+    "findingId": "arn:aws:securityhub:us-east-1:123456789012:subscription/...",
+    "title": "S3 bucket does not have server-side encryption enabled",
+    "severity": "HIGH",
+    "status": "NEW",
+    "description": "S3 bucket lacks default encryption",
+    "resourceType": "AwsS3Bucket",
+    "resourceIds": ["arn:aws:s3:::my-bucket"],
+    "firstObservedAt": "2024-01-15T08:00:00Z",
+    "lastObservedAt": "2024-01-15T16:00:00Z",
+    "remediationText": "Enable default encryption on S3 bucket",
+    "complianceStatus": "FAILED"
+  }
+]
+```
+
+### 3. Get Specific Vulnerability by ID
+```bash
+# Note: Finding IDs are typically ARNs and should be URL-encoded
+curl -X GET "http://localhost:8080/api/vulnerabilities/arn:aws:securityhub:us-east-1:123456789012:subscription/..."
+```
+
+## CloudWatch Logs APIs
+
+### 1. List All Log Groups
+```bash
+curl -X GET http://localhost:8080/api/logs/groups
+```
+
+Expected Response:
+```json
+[
+  "/aws/lambda/my-function",
+  "/aws/ecs/my-service",
+  "/aws/apigateway/my-api"
+]
+```
+
+### 2. Get Log Streams for a Log Group
+```bash
+# Note: Log group names with forward slashes should be URL-encoded
+# /aws/lambda/my-function becomes %2Faws%2Flambda%2Fmy-function
+curl -X GET "http://localhost:8080/api/logs/groups/%2Faws%2Flambda%2Fmy-function/streams"
+```
+
+Expected Response:
+```json
+[
+  "2024/01/15/[$LATEST]abcdef123456",
+  "2024/01/15/[$LATEST]789012ghijkl",
+  "2024/01/14/[$LATEST]mnopqr345678"
+]
+```
+
+### 3. Get Log Summary for a Specific Stream
+```bash
+# Get logs from the last 24 hours (default)
+curl -X GET "http://localhost:8080/api/logs/groups/%2Faws%2Flambda%2Fmy-function/streams/2024%2F01%2F15%2F%5B%24LATEST%5Dabcdef123456/summary"
+
+# Get logs from the last 12 hours
+curl -X GET "http://localhost:8080/api/logs/groups/%2Faws%2Flambda%2Fmy-function/streams/2024%2F01%2F15%2F%5B%24LATEST%5Dabcdef123456/summary?hours=12"
+```
+
+Expected Response:
+```json
+{
+  "logGroupName": "/aws/lambda/my-function",
+  "logStreamName": "2024/01/15/[$LATEST]abcdef123456",
+  "totalEvents": 150,
+  "startTime": "2024-01-15T10:00:00Z",
+  "endTime": "2024-01-15T22:00:00Z",
+  "statistics": {
+    "errorCount": 5,
+    "warningCount": 12,
+    "infoCount": 120,
+    "totalCount": 150
+  },
+  "events": [
+    {
+      "timestamp": "2024-01-15T15:30:00Z",
+      "message": "ERROR: Connection timeout to database",
+      "level": "ERROR"
+    },
+    {
+      "timestamp": "2024-01-15T15:29:00Z",
+      "message": "INFO: Processing request completed successfully",
+      "level": "INFO"
+    }
+  ]
+}
+```
+
+### 4. Get Log Summary for a Log Group (Latest Stream)
+```bash
+# Get logs from latest stream in the last 24 hours (default)
+curl -X GET "http://localhost:8080/api/logs/groups/%2Faws%2Flambda%2Fmy-function/summary"
+
+# Get logs from latest stream in the last 6 hours
+curl -X GET "http://localhost:8080/api/logs/groups/%2Faws%2Flambda%2Fmy-function/summary?hours=6"
+```
+
+Expected Response:
+```json
+{
+  "logGroupName": "/aws/lambda/my-function",
+  "logStreamName": "2024/01/15/[$LATEST]abcdef123456",
+  "totalEvents": 75,
+  "startTime": "2024-01-15T16:00:00Z",
+  "endTime": "2024-01-15T22:00:00Z",
+  "statistics": {
+    "errorCount": 2,
+    "warningCount": 5,
+    "infoCount": 65,
+    "totalCount": 75
+  },
+  "events": [
+    {
+      "timestamp": "2024-01-15T21:45:00Z",
+      "message": "INFO: Lambda function started",
+      "level": "INFO"
+    }
+  ]
+}
+```
+
 ## Using with Different Profiles
 
 ### Development Profile
@@ -247,5 +418,97 @@ echo "Active Alarms: ${ALARM_COUNT}"
 if [ ${ALARM_COUNT} -gt 0 ]; then
     echo "Found ${ALARM_COUNT} active alarm(s)!"
     curl -s "${API_URL}/api/alarms/state/ALARM" | jq '.[] | .alarmName'
+fi
+```
+
+### Vulnerability Monitoring Script
+```bash
+#!/bin/bash
+
+API_URL="http://localhost:8080"
+
+# Check for critical vulnerabilities
+CRITICAL_COUNT=$(curl -s "${API_URL}/api/vulnerabilities/severity/CRITICAL" | jq '. | length')
+
+echo "Critical Vulnerabilities: ${CRITICAL_COUNT}"
+
+if [ ${CRITICAL_COUNT} -gt 0 ]; then
+    echo "Found ${CRITICAL_COUNT} critical vulnerability(ies)!"
+    curl -s "${API_URL}/api/vulnerabilities/severity/CRITICAL" | jq '.[] | {title, resourceType, resourceIds}'
+fi
+
+# Check for high severity vulnerabilities
+HIGH_COUNT=$(curl -s "${API_URL}/api/vulnerabilities/severity/HIGH" | jq '. | length')
+
+echo "High Severity Vulnerabilities: ${HIGH_COUNT}"
+```
+
+### CloudWatch Logs Error Monitoring Script
+```bash
+#!/bin/bash
+
+API_URL="http://localhost:8080"
+LOG_GROUP="/aws/lambda/my-function"
+# URL encode the log group name
+ENCODED_LOG_GROUP=$(echo "$LOG_GROUP" | sed 's/\//%2F/g')
+
+# Get log summary
+SUMMARY=$(curl -s "${API_URL}/api/logs/groups/${ENCODED_LOG_GROUP}/summary?hours=1")
+
+ERROR_COUNT=$(echo "$SUMMARY" | jq -r '.statistics.errorCount')
+WARNING_COUNT=$(echo "$SUMMARY" | jq -r '.statistics.warningCount')
+
+echo "Log Group: ${LOG_GROUP}"
+echo "Errors (last hour): ${ERROR_COUNT}"
+echo "Warnings (last hour): ${WARNING_COUNT}"
+
+if [ "${ERROR_COUNT}" -gt 0 ]; then
+    echo "Errors detected! Recent error messages:"
+    echo "$SUMMARY" | jq -r '.events[] | select(.level == "ERROR") | .message'
+fi
+```
+
+### Comprehensive Health Check Script
+```bash
+#!/bin/bash
+
+API_URL="http://localhost:8080"
+
+echo "=== DevOps Agent Health Check ==="
+echo
+
+# Check application health
+echo "1. Application Health:"
+curl -s "${API_URL}/actuator/health" | jq '.'
+echo
+
+# Check for failed pipelines
+echo "2. Pipeline Status:"
+PIPELINES=$(curl -s "${API_URL}/api/pipelines")
+PIPELINE_COUNT=$(echo "$PIPELINES" | jq '. | length')
+echo "Total Pipelines: ${PIPELINE_COUNT}"
+echo
+
+# Check for active alarms
+echo "3. Active Alarms:"
+ALARM_COUNT=$(curl -s "${API_URL}/api/alarms/state/ALARM" | jq '. | length')
+echo "Alarms in ALARM state: ${ALARM_COUNT}"
+echo
+
+# Check for critical vulnerabilities
+echo "4. Security Vulnerabilities:"
+CRITICAL_VULN=$(curl -s "${API_URL}/api/vulnerabilities/severity/CRITICAL" | jq '. | length')
+HIGH_VULN=$(curl -s "${API_URL}/api/vulnerabilities/severity/HIGH" | jq '. | length')
+echo "Critical: ${CRITICAL_VULN}"
+echo "High: ${HIGH_VULN}"
+echo
+
+# Overall status
+if [ ${ALARM_COUNT} -gt 0 ] || [ ${CRITICAL_VULN} -gt 0 ]; then
+    echo "⚠️  WARNING: Action required!"
+    exit 1
+else
+    echo "✅ All systems operational"
+    exit 0
 fi
 ```
