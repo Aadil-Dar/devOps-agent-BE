@@ -6,6 +6,8 @@ A Spring Boot application built with Java 17 and Gradle that serves as a DevOps 
 
 - ✅ Monitor AWS CodePipeline status and execution history
 - ✅ Retrieve CloudWatch alarms and their states
+- ✅ Fetch AWS security vulnerabilities from Security Hub
+- ✅ Retrieve and summarize CloudWatch logs with statistics
 - ✅ Fetch open GitHub pull requests with their status
 - ✅ RESTful API endpoints for easy integration
 - ✅ Built with Spring Boot 3.2.0 and Java 17
@@ -249,6 +251,159 @@ Returns details of a specific pull request by number.
 curl http://localhost:8080/api/pull-requests/123
 ```
 
+### Vulnerability Endpoints
+
+#### Get All Vulnerabilities
+```bash
+GET /api/vulnerabilities
+```
+Returns all active security findings from AWS Security Hub.
+
+**Example:**
+```bash
+curl http://localhost:8080/api/vulnerabilities
+```
+
+**Response:**
+```json
+[
+  {
+    "findingId": "arn:aws:securityhub:us-east-1:123456789012:subscription/...",
+    "title": "EC2 instance has unrestricted SSH access",
+    "severity": "CRITICAL",
+    "status": "NEW",
+    "description": "Security group allows SSH access from 0.0.0.0/0",
+    "resourceType": "AwsEc2Instance",
+    "resourceIds": ["i-1234567890abcdef0"],
+    "firstObservedAt": "2024-01-15T10:00:00Z",
+    "lastObservedAt": "2024-01-15T15:30:00Z",
+    "remediationText": "Restrict SSH access to specific IP ranges",
+    "complianceStatus": "FAILED"
+  }
+]
+```
+
+#### Get Vulnerabilities by Severity
+```bash
+GET /api/vulnerabilities/severity/{severity}
+```
+Returns vulnerabilities filtered by severity level.
+
+**Valid severities:**
+- `CRITICAL` - Critical security issues
+- `HIGH` - High severity issues
+- `MEDIUM` - Medium severity issues
+- `LOW` - Low severity issues
+- `INFORMATIONAL` - Informational findings
+
+**Example:**
+```bash
+curl http://localhost:8080/api/vulnerabilities/severity/CRITICAL
+```
+
+#### Get Vulnerability by ID
+```bash
+GET /api/vulnerabilities/{findingId}
+```
+Returns details of a specific vulnerability finding.
+
+**Example:**
+```bash
+curl "http://localhost:8080/api/vulnerabilities/arn:aws:securityhub:us-east-1:123456789012:subscription/..."
+```
+
+### CloudWatch Logs Endpoints
+
+#### Get All Log Groups
+```bash
+GET /api/logs/groups
+```
+Returns a list of all CloudWatch log groups.
+
+**Example:**
+```bash
+curl http://localhost:8080/api/logs/groups
+```
+
+**Response:**
+```json
+[
+  "/aws/lambda/my-function",
+  "/aws/ecs/my-service",
+  "/aws/apigateway/my-api"
+]
+```
+
+#### Get Log Streams
+```bash
+GET /api/logs/groups/{logGroupName}/streams
+```
+Returns the most recent log streams for a specific log group.
+
+**Example:**
+```bash
+curl "http://localhost:8080/api/logs/groups/%2Faws%2Flambda%2Fmy-function/streams"
+```
+
+**Note:** Log group names with forward slashes should be URL-encoded (e.g., `/aws/lambda/my-function` becomes `%2Faws%2Flambda%2Fmy-function`).
+
+#### Get Log Summary for Stream
+```bash
+GET /api/logs/groups/{logGroupName}/streams/{logStreamName}/summary?hours=24
+```
+Returns a summarized view of logs with statistics for a specific log stream.
+
+**Parameters:**
+- `hours` (optional, default: 24) - Number of hours to look back
+
+**Example:**
+```bash
+curl "http://localhost:8080/api/logs/groups/%2Faws%2Flambda%2Fmy-function/streams/2024%2F01%2F15%2Fstream-1/summary?hours=12"
+```
+
+**Response:**
+```json
+{
+  "logGroupName": "/aws/lambda/my-function",
+  "logStreamName": "2024/01/15/stream-1",
+  "totalEvents": 150,
+  "startTime": "2024-01-15T10:00:00Z",
+  "endTime": "2024-01-15T22:00:00Z",
+  "statistics": {
+    "errorCount": 5,
+    "warningCount": 12,
+    "infoCount": 120,
+    "totalCount": 150
+  },
+  "events": [
+    {
+      "timestamp": "2024-01-15T15:30:00Z",
+      "message": "ERROR: Connection timeout to database",
+      "level": "ERROR"
+    },
+    {
+      "timestamp": "2024-01-15T15:29:00Z",
+      "message": "INFO: Processing request completed successfully",
+      "level": "INFO"
+    }
+  ]
+}
+```
+
+#### Get Log Summary for Log Group
+```bash
+GET /api/logs/groups/{logGroupName}/summary?hours=24
+```
+Returns a summarized view of logs from the most recent stream in the log group.
+
+**Parameters:**
+- `hours` (optional, default: 24) - Number of hours to look back
+
+**Example:**
+```bash
+curl "http://localhost:8080/api/logs/groups/%2Faws%2Flambda%2Fmy-function/summary?hours=6"
+```
+
 ### Health Check
 ```bash
 GET /actuator/health
@@ -315,6 +470,9 @@ logging.level.com.devops.agent=DEBUG
 - **AWS SDK v2** - AWS service integration
   - CodePipeline Client
   - CloudWatch Client
+  - CloudWatch Logs Client
+  - Security Hub Client
+  - Inspector2 Client
 - **GitHub API (Kohsuke)** - GitHub integration
 - **Lombok** - Reduce boilerplate code
 
@@ -331,16 +489,22 @@ devops-agent/
 │   │   │   │   └── GitHubConfig.java           # GitHub client configuration
 │   │   │   ├── controller/
 │   │   │   │   ├── AlarmController.java        # Alarm REST endpoints
+│   │   │   │   ├── LogController.java          # CloudWatch Logs REST endpoints
 │   │   │   │   ├── PipelineController.java     # Pipeline REST endpoints
-│   │   │   │   └── PullRequestController.java  # Pull Request REST endpoints
+│   │   │   │   ├── PullRequestController.java  # Pull Request REST endpoints
+│   │   │   │   └── VulnerabilityController.java # Vulnerability REST endpoints
 │   │   │   ├── model/
 │   │   │   │   ├── AlarmResponse.java          # Alarm DTO
+│   │   │   │   ├── LogSummaryResponse.java     # Log summary DTO
 │   │   │   │   ├── PipelineStatusResponse.java # Pipeline DTO
-│   │   │   │   └── PullRequestResponse.java    # Pull Request DTO
+│   │   │   │   ├── PullRequestResponse.java    # Pull Request DTO
+│   │   │   │   └── VulnerabilityResponse.java  # Vulnerability DTO
 │   │   │   └── service/
 │   │   │       ├── AlarmService.java           # CloudWatch alarm service
+│   │   │       ├── LogService.java             # CloudWatch Logs service
 │   │   │       ├── PipelineService.java        # CodePipeline service
-│   │   │       └── GitHubService.java          # GitHub service
+│   │   │       ├── GitHubService.java          # GitHub service
+│   │   │       └── VulnerabilityService.java   # Security Hub service
 │   │   └── resources/
 │   │       └── application.properties          # Application configuration
 │   └── test/
@@ -387,6 +551,42 @@ The AWS credentials used must have the following permissions:
   ]
 }
 ```
+
+### For CloudWatch Logs:
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams",
+        "logs:GetLogEvents"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+### For Security Hub:
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "securityhub:GetFindings"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+**Note:** AWS Security Hub must be enabled in your AWS account to use the vulnerability endpoints. Additionally, ensure you have appropriate security standards enabled (e.g., AWS Foundational Security Best Practices, CIS AWS Foundations Benchmark) to generate findings.
 
 ## License
 

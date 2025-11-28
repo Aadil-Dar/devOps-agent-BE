@@ -25,6 +25,9 @@ dependencies {
     implementation platform('software.amazon.awssdk:bom:2.21.0')
     implementation 'software.amazon.awssdk:codepipeline'
     implementation 'software.amazon.awssdk:cloudwatch'
+    implementation 'software.amazon.awssdk:cloudwatchlogs'
+    implementation 'software.amazon.awssdk:securityhub'
+    implementation 'software.amazon.awssdk:inspector2'
     
     // GitHub API
     implementation 'org.kohsuke:github-api:1.317'
