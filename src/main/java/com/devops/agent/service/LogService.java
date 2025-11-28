@@ -111,6 +111,12 @@ public class LogService {
                     case "INFO":
                         infoCount++;
                         break;
+                    case "UNKNOWN":
+                        // Intentionally not counted in statistics
+                        break;
+                    default:
+                        // Should not happen, but handle gracefully
+                        break;
                 }
 
                 eventSummaries.add(LogSummaryResponse.LogEventSummary.builder()
