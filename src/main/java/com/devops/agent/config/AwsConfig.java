@@ -7,6 +7,7 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchClient;
 import software.amazon.awssdk.services.codepipeline.CodePipelineClient;
+import software.amazon.awssdk.services.inspector2.Inspector2Client;
 
 @Configuration
 public class AwsConfig {
@@ -25,6 +26,14 @@ public class AwsConfig {
     @Bean
     public CloudWatchClient cloudWatchClient() {
         return CloudWatchClient.builder()
+                .region(Region.of(awsRegion))
+                .credentialsProvider(DefaultCredentialsProvider.create())
+                .build();
+    }
+
+    @Bean
+    public Inspector2Client inspector2Client() {
+        return Inspector2Client.builder()
                 .region(Region.of(awsRegion))
                 .credentialsProvider(DefaultCredentialsProvider.create())
                 .build();
