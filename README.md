@@ -7,10 +7,12 @@ A Spring Boot application built with Java 17 and Gradle that serves as a DevOps 
 - ✅ Monitor AWS CodePipeline status and execution history
 - ✅ Retrieve CloudWatch alarms and their states
 - ✅ Fetch open GitHub pull requests with their status
+- ✅ Fetch security vulnerabilities from AWS Inspector2
 - ✅ RESTful API endpoints for easy integration
 - ✅ Built with Spring Boot 3.2.0 and Java 17
 - ✅ AWS SDK v2 integration
 - ✅ GitHub API integration
+- ✅ Automatic fallback to dummy data when AWS credentials are not configured
 
 ## Prerequisites
 
@@ -207,6 +209,74 @@ Returns details of a specific alarm.
 curl http://localhost:8080/api/alarms/my-alarm
 ```
 
+### Security Vulnerability Endpoints
+
+#### Get All Vulnerabilities
+```bash
+GET /api/vulnerabilities
+```
+Returns all security vulnerabilities discovered by AWS Inspector2.
+
+**Note:** If AWS credentials are not configured or the Inspector2 API fails, the service automatically falls back to dummy data for demonstration purposes.
+
+**Example:**
+```bash
+curl http://localhost:8080/api/vulnerabilities
+```
+
+**Response:**
+```json
+[
+  {
+    "id": "CVE-2025-55754-001",
+    "cveId": "CVE-2025-55754",
+    "title": "Remote Code Execution in Tomcat Embed Core",
+    "cwe": "CWE-94",
+    "severity": "CRITICAL",
+    "cvssScore": 9.8,
+    "packageName": "org.apache.tomcat.embed:tomcat-embed-core",
+    "currentVersion": "9.0.65",
+    "fixedVersion": "9.0.70",
+    "affectedProjects": 2,
+    "status": "Open"
+  }
+]
+```
+
+#### Get Vulnerability Details by ID
+```bash
+GET /api/vulnerabilities/{id}
+```
+Returns detailed information about a specific vulnerability.
+
+**Example:**
+```bash
+curl http://localhost:8080/api/vulnerabilities/CVE-2025-55754-001
+```
+
+**Response:**
+```json
+{
+  "id": "CVE-2025-55754-001",
+  "cveId": "CVE-2025-55754",
+  "title": "Remote Code Execution in Tomcat Embed Core",
+  "cwe": "CWE-94",
+  "severity": "CRITICAL",
+  "cvssScore": 9.8,
+  "packageName": "org.apache.tomcat.embed:tomcat-embed-core",
+  "currentVersion": "9.0.65",
+  "fixedVersion": "9.0.70",
+  "affectedProjects": 2,
+  "status": "Open",
+  "description": "A critical remote code execution vulnerability was discovered in Apache Tomcat Embed Core. An attacker can exploit this vulnerability to execute arbitrary code on the server. This affects all versions prior to 9.0.70.",
+  "publishedDate": "2025-01-15T00:00:00Z",
+  "references": [
+    "https://nvd.nist.gov/vuln/detail/CVE-2025-55754",
+    "https://tomcat.apache.org/security-9.html"
+  ]
+}
+```
+
 ### Pull Request Endpoints
 
 #### Get All Open Pull Requests
@@ -315,6 +385,7 @@ logging.level.com.devops.agent=DEBUG
 - **AWS SDK v2** - AWS service integration
   - CodePipeline Client
   - CloudWatch Client
+  - Inspector2 Client
 - **GitHub API (Kohsuke)** - GitHub integration
 - **Lombok** - Reduce boilerplate code
 
@@ -324,27 +395,34 @@ logging.level.com.devops.agent=DEBUG
 devops-agent/
 ├── src/
 │   ├── main/
-│   │   ├── java/com/devops/agent/
-│   │   │   ├── DevOpsAgentApplication.java    # Main application class
-│   │   │   ├── config/
-│   │   │   │   ├── AwsConfig.java              # AWS client configuration
-│   │   │   │   └── GitHubConfig.java           # GitHub client configuration
-│   │   │   ├── controller/
-│   │   │   │   ├── AlarmController.java        # Alarm REST endpoints
-│   │   │   │   ├── PipelineController.java     # Pipeline REST endpoints
-│   │   │   │   └── PullRequestController.java  # Pull Request REST endpoints
-│   │   │   ├── model/
-│   │   │   │   ├── AlarmResponse.java          # Alarm DTO
-│   │   │   │   ├── PipelineStatusResponse.java # Pipeline DTO
-│   │   │   │   └── PullRequestResponse.java    # Pull Request DTO
-│   │   │   └── service/
-│   │   │       ├── AlarmService.java           # CloudWatch alarm service
-│   │   │       ├── PipelineService.java        # CodePipeline service
-│   │   │       └── GitHubService.java          # GitHub service
+│   │   ├── java/
+│   │   │   ├── com/devops/agent/
+│   │   │   │   ├── DevOpsAgentApplication.java    # Main application class
+│   │   │   │   ├── config/
+│   │   │   │   │   ├── AwsConfig.java              # AWS client configuration
+│   │   │   │   │   └── GitHubConfig.java           # GitHub client configuration
+│   │   │   │   ├── controller/
+│   │   │   │   │   ├── AlarmController.java        # Alarm REST endpoints
+│   │   │   │   │   ├── PipelineController.java     # Pipeline REST endpoints
+│   │   │   │   │   └── PullRequestController.java  # Pull Request REST endpoints
+│   │   │   │   ├── model/
+│   │   │   │   │   ├── AlarmResponse.java          # Alarm DTO
+│   │   │   │   │   ├── PipelineStatusResponse.java # Pipeline DTO
+│   │   │   │   │   └── PullRequestResponse.java    # Pull Request DTO
+│   │   │   │   └── service/
+│   │   │   │       ├── AlarmService.java           # CloudWatch alarm service
+│   │   │   │       ├── PipelineService.java        # CodePipeline service
+│   │   │   │       └── GitHubService.java          # GitHub service
+│   │   │   └── com/example/security/
+│   │   │       ├── model/
+│   │   │       │   ├── VulnerabilitySummaryDto.java # Vulnerability summary DTO
+│   │   │       │   └── VulnerabilityDetailDto.java  # Vulnerability detail DTO
+│   │   │       └── service/
+│   │   │           └── AwsInspectorService.java     # AWS Inspector2 service
 │   │   └── resources/
 │   │       └── application.properties          # Application configuration
 │   └── test/
-│       └── java/com/devops/agent/              # Test classes
+│       └── java/                               # Test classes
 ├── build.gradle                                 # Gradle build configuration
 ├── settings.gradle                              # Gradle settings
 └── README.md                                    # This file
@@ -387,6 +465,24 @@ The AWS credentials used must have the following permissions:
   ]
 }
 ```
+
+### For Inspector2:
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "inspector2:ListFindings"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+**Note:** The AwsInspectorService automatically falls back to dummy data if AWS credentials are not configured or if the Inspector2 API fails, allowing the application to run in development/demo mode without AWS access.
 
 ## License
 
