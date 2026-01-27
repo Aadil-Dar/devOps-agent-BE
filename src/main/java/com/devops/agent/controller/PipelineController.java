@@ -34,6 +34,7 @@ public class PipelineController {
 
     /**
      * Get pipeline status by name
+     * PR -> pipeline -> stages -> actions
      */
     @GetMapping("/{pipelineName}")
     public ResponseEntity<PipelineStatusResponse> getPipelineStatus(

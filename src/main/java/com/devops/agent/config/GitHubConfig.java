@@ -16,14 +16,31 @@ public class GitHubConfig {
     @Value("${github.token:#{null}}")
     private String githubToken;
 
+    @Value("${github.username:#{null}}")
+    private String githubUsername;
+
+    @Value("${github.password:#{null}}")
+    private String githubPassword;
+
     @Bean
     public GitHub gitHubClient() {
         try {
+            // Priority 1: OAuth token (most secure)
             if (githubToken != null && !githubToken.isEmpty()) {
-                log.info("Initializing GitHub client with authentication token");
+                log.info("Initializing GitHub client with OAuth token");
                 return new GitHubBuilder().withOAuthToken(githubToken).build();
-            } else {
-                log.info("Initializing GitHub client without authentication (anonymous access)");
+            }
+            // Priority 2: Username and password/token (basic auth)
+            else if (githubUsername != null && !githubUsername.isEmpty()
+                    && githubPassword != null && !githubPassword.isEmpty()) {
+                log.info("Initializing GitHub client with username and password");
+                return new GitHubBuilder()
+                        .withPassword(githubUsername, githubPassword)
+                        .build();
+            }
+            // Priority 3: Anonymous (limited rate)
+            else {
+                log.warn("Initializing GitHub client without authentication (anonymous access) - this has strict rate limits");
                 return GitHub.connectAnonymously();
             }
         } catch (IOException e) {

@@ -1,15 +1,14 @@
 package com.example.security.controller;
 
 import com.devops.agent.DevOpsAgentApplication;
-import com.example.security.model.VulnerabilityDetailDto;
-import com.example.security.model.VulnerabilitySummaryDto;
-import com.example.security.service.AwsInspectorService;
+import com.devops.agent.controller.AwsInspectorController;
+import com.devops.agent.model.VulnerabilityDetailDto;
+import com.devops.agent.model.VulnerabilitySummaryDto;
+import com.devops.agent.service.AwsInspectorService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;

@@ -1,0 +1,217 @@
+{
+  "info": {
+    "name": "DevOps Agent - Multi-Project API",
+    "description": "Complete API collection for multi-project DevOps agent",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "projectId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "System Admin",
+      "item": [
+        {
+          "name": "Initialize Database",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/system/init-db",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "system", "init-db"]
+            }
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/system/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "system", "health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Project Management",
+      "item": [
+        {
+          "name": "Create Project",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('projectId', jsonData.projectId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"SHOMA UI\",\n  \"githubOwner\": \"sdc-pune\",\n  \"githubRepo\": \"shoma-ui\",\n  \"awsRegion\": \"eu-west-1\",\n  \"createdBy\": \"admin\",\n  \"githubToken\": \"ghp_your_token_here\",\n  \"awsAccessKey\": \"AKIAIOSFODNN7EXAMPLE\",\n  \"awsSecretKey\": \"wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/projects/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "projects", "upload"]
+            }
+          }
+        },
+        {
+          "name": "List All Projects",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/projects",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "projects"]
+            }
+          }
+        },
+        {
+          "name": "Get Project by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/projects/{{projectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "projects", "{{projectId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Project",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"SHOMA UI Updated\",\n  \"githubOwner\": \"sdc-pune\",\n  \"githubRepo\": \"shoma-ui\",\n  \"awsRegion\": \"us-east-1\",\n  \"githubToken\": \"ghp_new_token_here\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/projects/{{projectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "projects", "{{projectId}}"]
+            }
+          }
+        },
+        {
+          "name": "Toggle Project (Enable/Disable)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/projects/{{projectId}}/toggle",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "projects", "{{projectId}}", "toggle"]
+            }
+          }
+        },
+        {
+          "name": "Validate Project",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/projects/{{projectId}}/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "projects", "{{projectId}}", "validate"]
+            }
+          }
+        },
+        {
+          "name": "Delete Project",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/projects/{{projectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "projects", "{{projectId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Project Operations",
+      "item": [
+        {
+          "name": "Get Project Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/info",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "projects", "{{projectId}}", "info"]
+            }
+          }
+        },
+        {
+          "name": "Execute Operation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operation\": \"check-pipeline\",\n  \"parameters\": {\n    \"pipelineName\": \"my-pipeline\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/execute",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "projects", "{{projectId}}", "execute"]
+            }
+          }
+        },
+        {
+          "name": "Get GitHub Credentials",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/github-credentials",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "projects", "{{projectId}}", "github-credentials"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+

@@ -1,7 +1,8 @@
 package com.example.security.service;
 
-import com.example.security.model.VulnerabilityDetailDto;
-import com.example.security.model.VulnerabilitySummaryDto;
+import com.devops.agent.model.VulnerabilityDetailDto;
+import com.devops.agent.model.VulnerabilitySummaryDto;
+import com.devops.agent.service.AwsInspectorService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

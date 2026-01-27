@@ -27,7 +27,7 @@ class GitHubServiceTest {
 
     @BeforeEach
     void setUp() {
-        gitHubService = new GitHubService(gitHubClient);
+        gitHubService = new GitHubService();
     }
 
     @Test

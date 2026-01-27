@@ -18,31 +18,39 @@ public class PullRequestController {
     private final GitHubService gitHubService;
 
     /**
-     * Get all open pull requests
+     * Get all open pull requests for a specific project
+     * @param projectId Optional project ID to fetch PRs for a specific project (uses default if not provided)
      */
     @GetMapping
-    public ResponseEntity<List<PullRequestResponse>> getOpenPullRequests() {
-        log.info("GET /api/pull-requests - Fetching open pull requests");
+    public ResponseEntity<List<PullRequestResponse>> getOpenPullRequests(
+            @RequestParam(required = false) String projectId) {
+        log.info("GET /api/pull-requests - Fetching open pull requests for projectId: {}",
+                projectId != null ? projectId : "default");
         try {
-            List<PullRequestResponse> pullRequests = gitHubService.getOpenPullRequests();
+            List<PullRequestResponse> pullRequests = gitHubService.getOpenPullRequests(projectId);
             return ResponseEntity.ok(pullRequests);
         } catch (Exception e) {
-            log.error("Error fetching pull requests", e);
+            log.error("Error fetching pull requests for projectId {}: {}", projectId, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
 
     /**
-     * Get a specific pull request by number
+     * Get a specific pull request by number for a specific project
+     * @param number The pull request number
+     * @param projectId Optional project ID (uses default if not provided)
      */
     @GetMapping("/{number}")
-    public ResponseEntity<PullRequestResponse> getPullRequest(@PathVariable int number) {
-        log.info("GET /api/pull-requests/{} - Fetching pull request", number);
+    public ResponseEntity<PullRequestResponse> getPullRequest(
+            @PathVariable int number,
+            @RequestParam(required = false) String projectId) {
+        log.info("GET /api/pull-requests/{} - Fetching pull request for projectId: {}",
+                number, projectId != null ? projectId : "default");
         try {
-            PullRequestResponse pullRequest = gitHubService.getPullRequest(number);
+            PullRequestResponse pullRequest = gitHubService.getPullRequest(projectId, number);
             return ResponseEntity.ok(pullRequest);
         } catch (RuntimeException e) {
-            log.error("Error fetching pull request #{}", number, e);
+            log.error("Error fetching pull request #{} for projectId {}: {}", number, projectId, e.getMessage(), e);
             return ResponseEntity.notFound().build();
         }
     }

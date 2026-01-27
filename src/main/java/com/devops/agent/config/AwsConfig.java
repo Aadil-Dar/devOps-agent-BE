@@ -6,13 +6,16 @@ import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchClient;
+import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.codepipeline.CodePipelineClient;
+import software.amazon.awssdk.services.ec2.Ec2Client;
+import software.amazon.awssdk.services.elasticloadbalancingv2.ElasticLoadBalancingV2Client;
 import software.amazon.awssdk.services.inspector2.Inspector2Client;
 
 @Configuration
 public class AwsConfig {
 
-    @Value("${aws.region:us-east-1}")
+    @Value("${aws.region:eu-west-1}")
     private String awsRegion;
 
     @Bean
@@ -32,8 +35,32 @@ public class AwsConfig {
     }
 
     @Bean
+    public CloudWatchLogsClient cloudWatchLogsClient() {
+        return CloudWatchLogsClient.builder()
+                .region(Region.of(awsRegion))
+                .credentialsProvider(DefaultCredentialsProvider.create())
+                .build();
+    }
+
+    @Bean
     public Inspector2Client inspector2Client() {
         return Inspector2Client.builder()
+                .region(Region.of(awsRegion))
+                .credentialsProvider(DefaultCredentialsProvider.create())
+                .build();
+    }
+
+    @Bean
+    public Ec2Client ec2Client() {
+        return Ec2Client.builder()
+                .region(Region.of(awsRegion))
+                .credentialsProvider(DefaultCredentialsProvider.create())
+                .build();
+    }
+
+    @Bean
+    public ElasticLoadBalancingV2Client elasticLoadBalancingV2Client() {
+        return ElasticLoadBalancingV2Client.builder()
                 .region(Region.of(awsRegion))
                 .credentialsProvider(DefaultCredentialsProvider.create())
                 .build();

@@ -1,9 +1,26 @@
 # DevOps Agent
 
+> 🔐 **NEW: JWT Authentication Enabled!** This application now includes comprehensive JWT authentication. See [JWT_DOCUMENTATION_INDEX.md](JWT_DOCUMENTATION_INDEX.md) for complete documentation.
+
 A Spring Boot application built with Java 17 and Gradle that serves as a DevOps agent to monitor AWS resources and GitHub pull requests, providing unified visibility into AWS CodePipeline status, CloudWatch alarms, and GitHub PR status.
+
+## 🔐 Authentication
+
+This application now requires JWT authentication for all API endpoints (except `/api/auth/**` and `/actuator/**`).
+
+**Quick Start:**
+- Default admin user: `admin` / `admin123`
+- Default user: `user` / `user123`
+- See [JWT_QUICKSTART.md](JWT_QUICKSTART.md) for usage
+
+**Complete Documentation:**
+- [JWT_DOCUMENTATION_INDEX.md](JWT_DOCUMENTATION_INDEX.md) - Start here
+- [JWT_AUTHENTICATION_GUIDE.md](JWT_AUTHENTICATION_GUIDE.md) - Complete API reference
 
 ## Features
 
+- 🔐 **JWT Authentication** - Secure token-based authentication
+- 🔒 **Role-Based Access Control** - ADMIN and USER roles
 - ✅ Monitor AWS CodePipeline status and execution history
 - ✅ Retrieve CloudWatch alarms and their states
 - ✅ Fetch open GitHub pull requests with their status
