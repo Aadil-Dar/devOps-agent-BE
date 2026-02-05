@@ -32,8 +32,8 @@ public class ClusterLogsService {
     private final WebClient ollamaWebClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // Virtual Thread Executor for parallel processing (Java 21+)
-    private static final ExecutorService VIRTUAL_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
+    // Thread pool for parallel processing (Java 17 compatible)
+    private static final ExecutorService VIRTUAL_EXECUTOR = Executors.newCachedThreadPool();
 
     // Optimized thread pool for CPU-intensive tasks
     private static final ExecutorService CPU_EXECUTOR = Executors.newWorkStealingPool();
@@ -357,8 +357,8 @@ public class ClusterLogsService {
                 .id(id)
                 .title(title)
                 .count(logs.size())
-                .firstSeen(logs.getFirst().timestamp())
-                .lastSeen(logs.getLast().timestamp())
+                .firstSeen(logs.get(0).timestamp())
+                .lastSeen(logs.get(logs.size() - 1).timestamp())
                 .affectedHosts(affectedHosts)
                 .affectedServices(affectedServices)
                 .sampleLogs(sampleLogs)
@@ -418,8 +418,8 @@ public class ClusterLogsService {
                             .id("c" + idCounter.getAndIncrement())
                             .title(title)
                             .count(logs.size())
-                            .firstSeen(logs.getFirst().timestamp())
-                            .lastSeen(logs.getLast().timestamp())
+                            .firstSeen(logs.get(0).timestamp())
+                            .lastSeen(logs.get(logs.size() - 1).timestamp())
                             .affectedHosts(affectedHosts)
                             .affectedServices(affectedServices)
                             .sampleLogs(sampleLogs)
