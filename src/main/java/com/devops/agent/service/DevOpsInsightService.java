@@ -233,7 +233,8 @@ public class DevOpsInsightService {
             return "ERROR";
         } else if (message.toUpperCase().contains("WARN")) {
             return "WARN";
-        } else if (message.toUpperCase().contains("5XX") || message.contains(" 5")) {
+        } else if (message.matches(".*\\b5\\d{2}\\b.*")) {
+            // Match HTTP 5xx status codes specifically (e.g., 500, 503)
             return "ERROR";
         }
         return "WARN";
@@ -260,7 +261,9 @@ public class DevOpsInsightService {
 
         timestamps.sort(Long::compareTo);
         long totalTime = timestamps.get(timestamps.size() - 1) - timestamps.get(0);
-        if (totalTime == 0) return 0.0;
+        
+        // Require minimum time window of 1 minute to calculate meaningful trend
+        if (totalTime < 60000) return 0.0;
 
         // Split into two halves and compare frequency
         int midpoint = timestamps.size() / 2;
@@ -427,8 +430,13 @@ public class DevOpsInsightService {
                 prompt.append(String.format("- Service: %s, Error: %s, Severity: %s, Occurrences: %d, Trend: %.2f\n",
                         summary.getService(), summary.getErrorSignature(), summary.getSeverity(),
                         summary.getOccurrences(), summary.getTrendScore()));
-                prompt.append(String.format("  Sample: %s\n", summary.getSampleMessage().substring(0,
-                        Math.min(200, summary.getSampleMessage().length()))));
+                
+                // Safely handle sample message with null check
+                String sampleMsg = summary.getSampleMessage();
+                if (sampleMsg != null && !sampleMsg.isEmpty()) {
+                    int length = Math.min(200, sampleMsg.length());
+                    prompt.append(String.format("  Sample: %s\n", sampleMsg.substring(0, length)));
+                }
             }
         }
 
@@ -536,6 +544,10 @@ public class DevOpsInsightService {
             case "HIGH" -> likelihood = 0.7;
             case "MEDIUM" -> likelihood = 0.4;
             case "LOW" -> likelihood = 0.1;
+            default -> {
+                log.warn("Unexpected risk level from AI: {}. Defaulting to MEDIUM.", riskLevel);
+                likelihood = 0.4;
+            }
         }
 
         // Adjust based on error trends
