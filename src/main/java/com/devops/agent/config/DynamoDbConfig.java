@@ -65,3 +65,11 @@ public class DynamoDbConfig {
     }
 }
 
+
+    @Bean
+    public DynamoDbTable<HealthInsightRecord> healthInsightTable(
+            DynamoDbEnhancedClient enhancedClient) {
+        return enhancedClient.table(healthInsightsTableName,
+                TableSchema.fromBean(HealthInsightRecord.class));
+    }
+}

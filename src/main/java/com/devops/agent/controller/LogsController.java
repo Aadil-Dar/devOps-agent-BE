@@ -2,6 +2,7 @@ package com.devops.agent.controller;
 
 import com.devops.agent.model.ClusterLogsResponse;
 import com.devops.agent.model.PaginatedLogsResponse;
+import com.devops.agent.model.LogSummaryResponse;
 import com.devops.agent.service.CloudWatchLogsService;
 import com.devops.agent.service.ClusterLogsService;
 import lombok.RequiredArgsConstructor;
@@ -38,17 +39,18 @@ public class LogsController {
      */
     @GetMapping
     public ResponseEntity<PaginatedLogsResponse> getLogs(
-            @RequestParam(required = false, defaultValue = "24h") String timeRange,
+            @RequestParam(required = false, defaultValue = "6h") String timeRange,
             @RequestParam(required = false) String environment,
             @RequestParam(required = false) List<String> severities,
             @RequestParam(required = false) List<String> services,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String clusterId,
+            @RequestParam(required = false) String projectId,
             @RequestParam(required = false, defaultValue = "1") int page,
             @RequestParam(required = false, defaultValue = "20") int size
     ) {
-        log.info("GET /api/logs - timeRange: {}, environment: {}, severities: {}, services: {}, search: {}, clusterId: {}, page: {}, size: {}",
-                timeRange, environment, severities, services, search, clusterId, page, size);
+        log.info("GET /api/logs - timeRange: {}, environment: {}, severities: {}, services: {}, search: {}, clusterId: {}, projectId: {}, page: {}, size: {}",
+                timeRange, environment, severities, services, search, clusterId, "ad7bf91a-172c-48aa-9ffb-9abd84f5d827", page, size);
 
         try {
             // Validate page and size
@@ -74,6 +76,7 @@ public class LogsController {
                     services,
                     search,
                     clusterId,
+                    projectId,
                     page,
                     size
             );
@@ -118,5 +121,42 @@ public class LogsController {
             return ResponseEntity.internalServerError().build();
         }
     }
-}
 
+    /**
+     * GET /api/logs/summary
+     * Summarize logs for frontend health cards
+     *
+     * Query Parameters:
+     * - timeRange: string ("1h", "6h", "24h", "today") - default: "6h"
+     * - environment: string ("prod", "stage", "dev") - optional
+     * - severities: array of strings (["ERROR", "WARN", "INFO", "DEBUG"]) - optional
+     * - services: array of strings (["order-service", "payment-service"]) - optional
+     * - search: string (text match on message) - optional
+     * - clusterId: string (filters to a specific cluster) - optional
+     *
+     * Response: LogSummaryResponse with summary statistics
+     */
+    @GetMapping("/summary")
+    public ResponseEntity<LogSummaryResponse> summarizeLogs(
+            @RequestParam(required = false, defaultValue = "6h") String timeRange,
+            @RequestParam(required = false) String environment,
+            @RequestParam(required = false) List<String> severities,
+            @RequestParam(required = false) List<String> services,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String clusterId,
+            @RequestParam(required = false) String projectId
+    ) {
+        log.info("GET /api/logs/summary - timeRange: {}, environment: {}, severities: {}, services: {}, search: {}, clusterId: {}, projectId: {}",
+                timeRange, environment, severities, services, search, clusterId, projectId);
+        try {
+            if (timeRange != null && !isValidTimeRange(timeRange)) {
+                return ResponseEntity.badRequest().build();
+            }
+            var summary = cloudWatchLogsService.summarizeLogs(timeRange, environment, severities, services, search, clusterId, projectId);
+            return ResponseEntity.ok(summary);
+        } catch (Exception e) {
+            log.error("Error summarizing logs", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+}
