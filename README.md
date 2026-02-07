@@ -21,6 +21,10 @@ This application now requires JWT authentication for all API endpoints (except `
 
 - 🔐 **JWT Authentication** - Secure token-based authentication
 - 🔒 **Role-Based Access Control** - ADMIN and USER roles
+- 🤖 **AI-Powered Failure Prediction** - GenAI-based predictive analytics for system failures
+- 📊 **CloudWatch Log Analysis** - Automated error detection and trend analysis
+- 📈 **Metrics Monitoring** - Real-time CPU and memory tracking
+- 🔮 **Proactive Alerts** - Predict failures before they happen
 - ✅ Monitor AWS CodePipeline status and execution history
 - ✅ Retrieve CloudWatch alarms and their states
 - ✅ Fetch open GitHub pull requests with their status
@@ -38,6 +42,37 @@ This application now requires JWT authentication for all API endpoints (except `
 - AWS account with appropriate credentials configured (for AWS features)
 - AWS CLI configured or environment variables set for AWS credentials
 - Optional: GitHub Personal Access Token (for higher API rate limits)
+- **NEW:** Ollama installed locally for AI-powered failure prediction (see setup below)
+
+### Ollama Setup for AI Features
+
+The DevOps AI Assist feature requires Ollama running locally:
+
+1. **Install Ollama:**
+   ```bash
+   # macOS
+   brew install ollama
+   
+   # Linux
+   curl -fsSL https://ollama.com/install.sh | sh
+   ```
+
+2. **Start Ollama:**
+   ```bash
+   ollama serve
+   ```
+
+3. **Pull the model:**
+   ```bash
+   ollama pull qwen2.5-coder:7b
+   ```
+
+4. **Configure in application.properties:**
+   ```properties
+   ollama.base-url=http://localhost:11434
+   ```
+
+The application will automatically use Ollama for AI-powered log analysis and failure prediction.
 
 ## AWS Credentials Configuration
 
@@ -147,6 +182,96 @@ java -jar build/libs/devops-agent-1.0.0.jar --spring.profiles.active=prod
 ```
 
 ## API Endpoints
+
+### 🤖 DevOps AI Assist - Failure Prediction (NEW!)
+
+#### Health Check & Failure Prediction
+```bash
+POST /api/devops/healthCheck
+```
+
+Performs AI-powered health analysis and failure prediction for a project by:
+- Analyzing CloudWatch logs for errors and warnings
+- Monitoring system metrics (CPU, Memory)
+- Using GenAI (Ollama) to predict potential failures
+- Providing actionable recommendations
+
+**Authentication:** Required (JWT token)
+
+**Request Body:**
+```json
+{
+  "projectId": "my-project-123"
+}
+```
+
+**Response:**
+```json
+{
+  "riskLevel": "HIGH",
+  "summary": "Critical errors detected with high CPU usage. Service may fail soon.",
+  "recommendations": [
+    "Fix NullPointerException in OrderService",
+    "Scale up resources immediately",
+    "Enable circuit breaker for database calls"
+  ],
+  "predictions": {
+    "timeframe": "within 4-6 hours",
+    "likelihood": 0.75,
+    "rootCause": "NullPointerException recurring in OrderService indicating code defect"
+  },
+  "logCount": 150,
+  "errorCount": 45,
+  "warningCount": 30,
+  "metricTrends": [
+    {
+      "serviceName": "order-service",
+      "metricName": "CPUUtilization",
+      "currentValue": 92.5,
+      "averageValue": 85.0,
+      "trend": "INCREASING",
+      "unit": "Percent"
+    }
+  ],
+  "timestamp": 1699876543210
+}
+```
+
+**Risk Levels:**
+- `LOW` - System is healthy, no immediate concerns
+- `MEDIUM` - Some issues detected, monitor closely
+- `HIGH` - Critical issues found, action needed soon
+- `CRITICAL` - Immediate action required, failure imminent
+
+**Example:**
+```bash
+curl -X POST http://localhost:8080/api/devops/healthCheck \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"projectId": "my-project-123"}'
+```
+
+**Configuration Required:**
+
+Before using this endpoint, configure your project in DynamoDB with:
+- `logGroupNames`: List of CloudWatch log groups to monitor (e.g., `["/aws/ecs/prod/order-service"]`)
+- `serviceNames`: List of ECS services for metrics (e.g., `["order-service", "payment-service"]`)
+- `enabled`: Set to `true`
+
+**Automated Monitoring:**
+
+The system automatically runs health checks every 10 minutes for all enabled projects with configured log groups. Results are stored in DynamoDB for historical analysis.
+
+**How It Works:**
+
+1. **Log Analysis**: Fetches CloudWatch logs filtering for ERROR, WARN, Exception patterns
+2. **Log Processing**: Groups and deduplicates errors, calculates trends
+3. **Metrics Collection**: Retrieves CPU and Memory metrics from CloudWatch
+4. **AI Analysis**: Sends data to Ollama (qwen2.5-coder:7b) for root cause analysis
+5. **Prediction**: Combines historical data, trends, and AI insights to predict failures
+6. **Persistence**: Saves all data to DynamoDB tables for tracking
+
+---
 
 ### Pipeline Endpoints
 
@@ -504,3 +629,186 @@ The AWS credentials used must have the following permissions:
 ## License
 
 This project is open source and available under the MIT License.
+
+## DevOps AI Assist - Additional Details
+
+### DynamoDB Tables Setup
+
+The AI-powered failure prediction feature requires three new DynamoDB tables:
+
+#### 1. Log Summaries Table
+```bash
+aws dynamodb create-table \
+  --table-name devops-log-summaries \
+  --attribute-definitions \
+    AttributeName=projectId,AttributeType=S \
+    AttributeName=summaryId,AttributeType=S \
+  --key-schema \
+    AttributeName=projectId,KeyType=HASH \
+    AttributeName=summaryId,KeyType=RANGE \
+  --billing-mode PAY_PER_REQUEST \
+  --region us-east-1
+```
+
+#### 2. Metric Snapshots Table
+```bash
+aws dynamodb create-table \
+  --table-name devops-metric-snapshots \
+  --attribute-definitions \
+    AttributeName=projectId,AttributeType=S \
+    AttributeName=timestamp,AttributeType=N \
+  --key-schema \
+    AttributeName=projectId,KeyType=HASH \
+    AttributeName=timestamp,KeyType=RANGE \
+  --billing-mode PAY_PER_REQUEST \
+  --region us-east-1
+```
+
+#### 3. Prediction Results Table
+```bash
+aws dynamodb create-table \
+  --table-name devops-prediction-results \
+  --attribute-definitions \
+    AttributeName=projectId,AttributeType=S \
+    AttributeName=timestamp,AttributeType=N \
+  --key-schema \
+    AttributeName=projectId,KeyType=HASH \
+    AttributeName=timestamp,KeyType=RANGE \
+  --billing-mode PAY_PER_REQUEST \
+  --region us-east-1
+```
+
+### Project Configuration for AI Assist
+
+To enable AI-powered monitoring for a project, update the project configuration in DynamoDB:
+
+```json
+{
+  "projectId": "my-project-123",
+  "projectName": "My Application",
+  "enabled": true,
+  "awsRegion": "us-east-1",
+  "logGroupNames": [
+    "/aws/ecs/prod/order-service",
+    "/aws/ecs/prod/payment-service",
+    "/aws/ecs/prod/user-service"
+  ],
+  "serviceNames": [
+    "order-service",
+    "payment-service",
+    "user-service"
+  ],
+  "lastProcessedTimestamp": null
+}
+```
+
+**Key Fields:**
+- `logGroupNames`: CloudWatch log groups to monitor for errors/warnings
+- `serviceNames`: ECS service names for CPU/Memory metrics
+- `lastProcessedTimestamp`: Automatically updated after each health check (initially null)
+
+### How AI Failure Prediction Works
+
+1. **Log Collection**: Fetches logs from CloudWatch using filter pattern `?ERROR ?WARN ?Exception ?Timeout ?5xx`
+2. **Log Processing**: 
+   - Normalizes and groups errors by service and error signature
+   - Deduplicates repeated errors
+   - Calculates error frequency trends
+3. **Metrics Collection**: Retrieves CPU and Memory utilization from CloudWatch
+4. **AI Analysis**: Sends summarized data to Ollama (qwen2.5-coder:7b) for:
+   - Root cause analysis
+   - Risk assessment
+   - Actionable recommendations
+5. **Prediction**: Combines AI insights with trend data to predict:
+   - Failure likelihood (0.0 to 1.0)
+   - Timeframe ("within 1-2 hours", "within 12-24 hours", etc.)
+   - Risk level (LOW, MEDIUM, HIGH, CRITICAL)
+6. **Persistence**: Stores all processed data in DynamoDB for historical analysis
+7. **Scheduled Monitoring**: Automatically runs health checks every 10 minutes for enabled projects
+
+### IAM Permissions Required
+
+Add these permissions for DevOps AI Assist:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:FilterLogEvents",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams",
+        "logs:GetLogEvents"
+      ],
+      "Resource": "arn:aws:logs:*:*:log-group:/aws/ecs/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cloudwatch:GetMetricData",
+        "cloudwatch:GetMetricStatistics"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:PutItem",
+        "dynamodb:GetItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:Query",
+        "dynamodb:Scan"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:*:*:table/devops-log-summaries",
+        "arn:aws:dynamodb:*:*:table/devops-metric-snapshots",
+        "arn:aws:dynamodb:*:*:table/devops-prediction-results"
+      ]
+    }
+  ]
+}
+```
+
+### Testing the AI Feature
+
+1. **Configure a project** with log groups and service names
+2. **Generate some errors** in your application (or use existing ones)
+3. **Call the health check endpoint**:
+   ```bash
+   curl -X POST http://localhost:8080/api/devops/healthCheck \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"projectId": "my-project-123"}'
+   ```
+4. **Review the prediction results** including risk level and recommendations
+5. **Check DynamoDB tables** to see historical data
+
+### Troubleshooting
+
+**Ollama Connection Issues:**
+```bash
+# Verify Ollama is running
+curl http://localhost:11434/api/tags
+
+# Check if model is available
+ollama list
+```
+
+**No Logs Found:**
+- Verify `logGroupNames` are correct in project configuration
+- Check CloudWatch log groups exist and have recent logs
+- Ensure IAM permissions for CloudWatch Logs
+
+**No Metrics:**
+- Verify `serviceNames` match ECS service names exactly
+- Check CloudWatch metrics exist for the services
+- Ensure IAM permissions for CloudWatch metrics
+
+**AI Analysis Fails:**
+- Check Ollama service is running
+- Verify model is downloaded: `ollama pull qwen2.5-coder:7b`
+- Check logs for Ollama connection errors
+- Fallback analysis will be used if AI fails
+

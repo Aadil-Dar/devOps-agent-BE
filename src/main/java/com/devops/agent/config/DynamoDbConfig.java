@@ -1,7 +1,6 @@
 package com.devops.agent.config;
 
-import com.devops.agent.model.ProjectConfiguration;
-import com.devops.agent.model.User;
+import com.devops.agent.model.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,6 +28,15 @@ public class DynamoDbConfig {
 
     @Value("${aws.dynamodb.users-table-name:devops-users}")
     private String usersTableName;
+
+    @Value("${aws.dynamodb.log-summary-table-name:devops-log-summaries}")
+    private String logSummaryTableName;
+
+    @Value("${aws.dynamodb.metric-snapshot-table-name:devops-metric-snapshots}")
+    private String metricSnapshotTableName;
+
+    @Value("${aws.dynamodb.prediction-result-table-name:devops-prediction-results}")
+    private String predictionResultTableName;
 
     @Value("${aws.dynamodb.endpoint:}")
     private String endpoint;
@@ -62,6 +70,24 @@ public class DynamoDbConfig {
     public DynamoDbTable<User> userTable(DynamoDbEnhancedClient enhancedClient) {
         return enhancedClient.table(usersTableName,
                 TableSchema.fromBean(User.class));
+    }
+
+    @Bean
+    public DynamoDbTable<LogSummary> logSummaryTable(DynamoDbEnhancedClient enhancedClient) {
+        return enhancedClient.table(logSummaryTableName,
+                TableSchema.fromBean(LogSummary.class));
+    }
+
+    @Bean
+    public DynamoDbTable<MetricSnapshot> metricSnapshotTable(DynamoDbEnhancedClient enhancedClient) {
+        return enhancedClient.table(metricSnapshotTableName,
+                TableSchema.fromBean(MetricSnapshot.class));
+    }
+
+    @Bean
+    public DynamoDbTable<PredictionResult> predictionResultTable(DynamoDbEnhancedClient enhancedClient) {
+        return enhancedClient.table(predictionResultTableName,
+                TableSchema.fromBean(PredictionResult.class));
     }
 }
 

@@ -8,6 +8,7 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttri
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -32,6 +33,11 @@ public class ProjectConfiguration {
     private Long updatedAt;
     private String createdBy;
     private Map<String, String> metadata;
+    
+    // DevOps AI Assist fields
+    private List<String> logGroupNames; // CloudWatch log groups to monitor
+    private List<String> serviceNames; // Service names for metrics
+    private Long lastProcessedTimestamp; // Track last processed log timestamp
 
     @DynamoDbPartitionKey
     @DynamoDbAttribute("projectId")
@@ -92,6 +98,21 @@ public class ProjectConfiguration {
     @DynamoDbAttribute("metadata")
     public Map<String, String> getMetadata() {
         return metadata;
+    }
+
+    @DynamoDbAttribute("logGroupNames")
+    public List<String> getLogGroupNames() {
+        return logGroupNames;
+    }
+
+    @DynamoDbAttribute("serviceNames")
+    public List<String> getServiceNames() {
+        return serviceNames;
+    }
+
+    @DynamoDbAttribute("lastProcessedTimestamp")
+    public Long getLastProcessedTimestamp() {
+        return lastProcessedTimestamp;
     }
 }
 
