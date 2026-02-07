@@ -8,6 +8,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
@@ -40,6 +44,7 @@ public class DevOpsInsightService {
     private final DynamoDbTable<PredictionResult> predictionResultTable;
     private final WebClient ollamaWebClient;
     private final ObjectMapper objectMapper;
+    private final SecretsManagerService secretsManagerService;
 
     private static final Pattern ERROR_PATTERN = Pattern.compile(
             "(\\w+Exception|\\w+Error|Failed|Timeout|5\\d{2}\\s|Connection\\s+refused|Out\\s+of\\s+memory)",
@@ -67,37 +72,40 @@ public class DevOpsInsightService {
                 : endTime - (60 * 60 * 1000); // 1 hour in milliseconds
 
         // 3. Fetch and process CloudWatch logs
-        List<FilteredLogEvent> rawLogs = fetchCloudWatchLogs(project, startTime, endTime);
-        List<LogSummary> logSummaries = processLogs(projectId, rawLogs);
+        try (CloudWatchLogsClient projectLogsClient = createProjectCloudWatchLogsClient(projectId);
+             CloudWatchClient projectMetricsClient = createProjectCloudWatchClient(projectId)) {
 
-        // 4. Fetch CloudWatch metrics
-        List<MetricSnapshot> metrics = fetchCloudWatchMetrics(project, startTime, endTime);
+            List<FilteredLogEvent> rawLogs = fetchCloudWatchLogs(project, projectLogsClient, startTime, endTime);
+            List<LogSummary> logSummaries = processLogs(projectId, rawLogs);
 
-        // 5. Save log summaries and metrics to DynamoDB
-        logSummaries.forEach(logSummaryTable::putItem);
-        metrics.forEach(metricSnapshotTable::putItem);
+            List<MetricSnapshot> metrics = fetchCloudWatchMetrics(project, projectMetricsClient, startTime, endTime);
 
-        // 6. Analyze with AI
-        AiAnalysisResult aiResult = performAiAnalysis(projectId, logSummaries, metrics);
+            // 5. Save log summaries and metrics to DynamoDB
+            logSummaries.forEach(logSummaryTable::putItem);
+            metrics.forEach(metricSnapshotTable::putItem);
 
-        // 7. Generate predictions
-        PredictionResult prediction = generatePrediction(projectId, logSummaries, metrics, aiResult);
+            // 6. Analyze with AI
+            AiAnalysisResult aiResult = performAiAnalysis(projectId, logSummaries, metrics);
 
-        // 8. Save prediction to DynamoDB
-        predictionResultTable.putItem(prediction);
+            // 7. Generate predictions
+            PredictionResult prediction = generatePrediction(projectId, logSummaries, metrics, aiResult);
 
-        // 9. Update last processed timestamp
-        project.setLastProcessedTimestamp(endTime);
-        projectConfigurationService.updateConfiguration(projectId, project);
+            // 8. Save prediction to DynamoDB
+            predictionResultTable.putItem(prediction);
 
-        // 10. Build and return response
-        return buildHealthCheckResponse(prediction, metrics);
+            // 9. Update last processed timestamp
+            project.setLastProcessedTimestamp(endTime);
+            projectConfigurationService.updateConfiguration(projectId, project);
+
+            // 10. Build and return response
+            return buildHealthCheckResponse(prediction, metrics);
+        }
     }
 
     /**
      * Fetch logs from CloudWatch with error filtering
      */
-    private List<FilteredLogEvent> fetchCloudWatchLogs(ProjectConfiguration project, long startTime, long endTime) {
+    private List<FilteredLogEvent> fetchCloudWatchLogs(ProjectConfiguration project, CloudWatchLogsClient client, long startTime, long endTime) {
         List<FilteredLogEvent> allLogs = new ArrayList<>();
 
         List<String> logGroupNames = project.getLogGroupNames();
@@ -119,7 +127,7 @@ public class DevOpsInsightService {
                         .limit(1000) // Limit per request
                         .build();
 
-                FilterLogEventsResponse response = cloudWatchLogsClient.filterLogEvents(request);
+                FilterLogEventsResponse response = client.filterLogEvents(request);
                 allLogs.addAll(response.events());
 
                 log.info("Fetched {} logs from log group: {}", response.events().size(), logGroupName);
@@ -280,7 +288,7 @@ public class DevOpsInsightService {
     /**
      * Fetch CloudWatch metrics (CPU, Memory, etc.)
      */
-    private List<MetricSnapshot> fetchCloudWatchMetrics(ProjectConfiguration project, long startTime, long endTime) {
+    private List<MetricSnapshot> fetchCloudWatchMetrics(ProjectConfiguration project, CloudWatchClient client, long startTime, long endTime) {
         List<MetricSnapshot> snapshots = new ArrayList<>();
 
         List<String> serviceNames = project.getServiceNames();
@@ -294,8 +302,8 @@ public class DevOpsInsightService {
 
         // Fetch CPU and Memory metrics for each service
         for (String serviceName : serviceNames) {
-            snapshots.addAll(fetchMetricData(project, serviceName, "CPUUtilization", "AWS/ECS", start, end));
-            snapshots.addAll(fetchMetricData(project, serviceName, "MemoryUtilization", "AWS/ECS", start, end));
+            snapshots.addAll(fetchMetricData(project, client, serviceName, "CPUUtilization", "AWS/ECS", start, end));
+            snapshots.addAll(fetchMetricData(project, client, serviceName, "MemoryUtilization", "AWS/ECS", start, end));
         }
 
         log.info("Fetched {} metric snapshots", snapshots.size());
@@ -305,7 +313,7 @@ public class DevOpsInsightService {
     /**
      * Fetch specific metric data from CloudWatch
      */
-    private List<MetricSnapshot> fetchMetricData(ProjectConfiguration project, String serviceName,
+    private List<MetricSnapshot> fetchMetricData(ProjectConfiguration project, CloudWatchClient client, String serviceName,
                                                   String metricName, String namespace,
                                                   Instant start, Instant end) {
         List<MetricSnapshot> snapshots = new ArrayList<>();
@@ -339,7 +347,7 @@ public class DevOpsInsightService {
                     .metricDataQueries(query)
                     .build();
 
-            GetMetricDataResponse response = cloudWatchClient.getMetricData(request);
+            GetMetricDataResponse response = client.getMetricData(request);
 
             if (!response.metricDataResults().isEmpty()) {
                 MetricDataResult result = response.metricDataResults().get(0);
@@ -686,5 +694,73 @@ public class DevOpsInsightService {
 
         if (Math.abs(change) < 5.0) return "STABLE";
         return change > 0 ? "INCREASING" : "DECREASING";
+    }
+
+    private CloudWatchLogsClient createProjectCloudWatchLogsClient(String projectId) {
+        log.info("Creating CloudWatchLogsClient for projectId: {}", projectId);
+        try {
+            ProjectConfiguration config = projectConfigurationService.getConfiguration(projectId)
+                    .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
+
+            if (!Boolean.TRUE.equals(config.getEnabled())) {
+                throw new RuntimeException("Project is disabled: " + projectId);
+            }
+
+            Map<String, String> secrets = secretsManagerService.getSecrets(projectId);
+            String awsAccessKey = secrets.get("aws-access-key");
+            String awsSecretKey = secrets.get("aws-secret-key");
+            Region region = Region.of(config.getAwsRegion() != null ? config.getAwsRegion() : "eu-west-1");
+
+            if (awsAccessKey != null && awsSecretKey != null && !awsAccessKey.isEmpty() && !awsSecretKey.isEmpty()) {
+                log.debug("Using project-specific AWS credentials for CloudWatch Logs, projectId: {}", projectId);
+                return CloudWatchLogsClient.builder()
+                        .region(region)
+                        .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(awsAccessKey, awsSecretKey)))
+                        .build();
+            }
+
+            log.debug("Using default AWS credentials for CloudWatch Logs, projectId: {}", projectId);
+            return CloudWatchLogsClient.builder()
+                    .region(region)
+                    .credentialsProvider(DefaultCredentialsProvider.create())
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to create CloudWatchLogsClient for projectId {}: {}", projectId, e.getMessage(), e);
+            throw new RuntimeException("Failed to create CloudWatchLogsClient for project: " + projectId, e);
+        }
+    }
+
+    private CloudWatchClient createProjectCloudWatchClient(String projectId) {
+        log.info("Creating CloudWatchClient for projectId: {}", projectId);
+        try {
+            ProjectConfiguration config = projectConfigurationService.getConfiguration(projectId)
+                    .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
+
+            if (!Boolean.TRUE.equals(config.getEnabled())) {
+                throw new RuntimeException("Project is disabled: " + projectId);
+            }
+
+            Map<String, String> secrets = secretsManagerService.getSecrets(projectId);
+            String awsAccessKey = secrets.get("aws-access-key");
+            String awsSecretKey = secrets.get("aws-secret-key");
+            Region region = Region.of(config.getAwsRegion() != null ? config.getAwsRegion() : "eu-west-1");
+
+            if (awsAccessKey != null && awsSecretKey != null && !awsAccessKey.isEmpty() && !awsSecretKey.isEmpty()) {
+                log.debug("Using project-specific AWS credentials for CloudWatch Metrics, projectId: {}", projectId);
+                return CloudWatchClient.builder()
+                        .region(region)
+                        .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(awsAccessKey, awsSecretKey)))
+                        .build();
+            }
+
+            log.debug("Using default AWS credentials for CloudWatch Metrics, projectId: {}", projectId);
+            return CloudWatchClient.builder()
+                    .region(region)
+                    .credentialsProvider(DefaultCredentialsProvider.create())
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to create CloudWatchClient for projectId {}: {}", projectId, e.getMessage(), e);
+            throw new RuntimeException("Failed to create CloudWatchClient for project: " + projectId, e);
+        }
     }
 }
