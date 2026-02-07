@@ -7,7 +7,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-@ComponentScan(basePackages = {"com.devops.agent", "com.example.security"})
+@SpringBootApplication
 public class DevOpsAgentApplication {
 
     public static void main(String[] args) {
