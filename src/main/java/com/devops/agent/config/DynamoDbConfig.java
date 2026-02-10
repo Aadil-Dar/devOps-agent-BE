@@ -38,6 +38,9 @@ public class DynamoDbConfig {
     @Value("${aws.dynamodb.prediction-result-table-name:devops-prediction-results}")
     private String predictionResultTableName;
 
+    @Value("${aws.dynamodb.log-embedding-table-name:devops-log-embeddings}")
+    private String logEmbeddingTableName;
+
     @Value("${aws.dynamodb.endpoint:}")
     private String endpoint;
 
@@ -89,13 +92,19 @@ public class DynamoDbConfig {
         return enhancedClient.table(predictionResultTableName,
                 TableSchema.fromBean(PredictionResult.class));
     }
-}
-
 
     @Bean
-    public DynamoDbTable<HealthInsightRecord> healthInsightTable(
-            DynamoDbEnhancedClient enhancedClient) {
-        return enhancedClient.table(healthInsightsTableName,
-                TableSchema.fromBean(HealthInsightRecord.class));
+    public DynamoDbTable<LogEmbedding> logEmbeddingTable(DynamoDbEnhancedClient enhancedClient) {
+        return enhancedClient.table(logEmbeddingTableName,
+                TableSchema.fromBean(LogEmbedding.class));
     }
 }
+
+
+//    @Bean
+//    public DynamoDbTable<HealthInsightRecord> healthInsightTable(
+//            DynamoDbEnhancedClient enhancedClient) {
+//        return enhancedClient.table(healthInsightsTableName,
+//                TableSchema.fromBean(HealthInsightRecord.class));
+//    }
+//}

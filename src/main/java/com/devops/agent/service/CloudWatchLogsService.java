@@ -1,6 +1,7 @@
 package com.devops.agent.service;
 
 import com.devops.agent.model.*;
+import com.devops.agent.util.CloudWatchLogsUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -329,36 +330,19 @@ public class CloudWatchLogsService {
         List<LogEntry> logs = new ArrayList<>();
 
         try {
-            // Get log streams for this log group (most recent first)
-            DescribeLogStreamsRequest streamsRequest = DescribeLogStreamsRequest.builder()
-                    .logGroupName(logGroupName)
-                    .orderBy(OrderBy.LAST_EVENT_TIME)
-                    .descending(true)
-                    .limit(10) // Limit to most recent streams
-                    .build();
+            // Use shared utility for reliable log fetching
+            List<OutputLogEvent> events = CloudWatchLogsUtil.fetchLogsFromGroup(
+                client, logGroupName, startTime, endTime,
+                10, // Max 10 most recent streams
+                100  // Max 100 events per stream
+            );
 
-            DescribeLogStreamsResponse streamsResponse = client.describeLogStreams(streamsRequest);
-
-            for (LogStream stream : streamsResponse.logStreams()) {
-                // Fetch events from this stream
-                GetLogEventsRequest eventsRequest = GetLogEventsRequest.builder()
-                        .logGroupName(logGroupName)
-                        .logStreamName(stream.logStreamName())
-                        .startTime(startTime)
-                        .endTime(endTime)
-                        .startFromHead(false) // Start from most recent
-                        .limit(100) // Limit events per stream
-                        .build();
-
-                GetLogEventsResponse eventsResponse = client.getLogEvents(eventsRequest);
-
-                for (OutputLogEvent event : eventsResponse.events()) {
-                    LogEntry logEntry = parseLogEvent(event, logGroupName, stream.logStreamName());
-                    logs.add(logEntry);
-                }
+            for (OutputLogEvent event : events) {
+                LogEntry logEntry = parseLogEvent(event, logGroupName, "stream-" + event.hashCode());
+                logs.add(logEntry);
             }
 
-        } catch (CloudWatchLogsException e) {
+        } catch (Exception e) {
             log.warn("Error fetching logs from group {}: {}", logGroupName, e.getMessage());
         }
 

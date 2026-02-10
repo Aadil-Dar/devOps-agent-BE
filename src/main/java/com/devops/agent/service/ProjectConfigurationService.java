@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
-import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 
 import java.util.ArrayList;
@@ -26,12 +25,11 @@ public class ProjectConfigurationService {
     /**
      * Save project configuration to DynamoDB
      */
-    public ProjectConfiguration saveConfiguration(ProjectConfiguration config) {
+    public void saveConfiguration(ProjectConfiguration config) {
         try {
             log.info("Saving project configuration for projectId: {}", config.getProjectId());
             projectTable.putItem(config);
             log.info("Successfully saved project configuration: {}", config.getProjectId());
-            return config;
         } catch (DynamoDbException e) {
             log.error("Failed to save project configuration: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to save project configuration", e);

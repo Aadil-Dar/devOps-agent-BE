@@ -20,6 +20,7 @@ public class ProjectUploadRequest {
     private String githubRepo;
     private String awsRegion;
     private String createdBy;
+    private String backendLogGroupName;
 
     // Sensitive credentials (will be stored in Secrets Manager)
     private String githubToken;

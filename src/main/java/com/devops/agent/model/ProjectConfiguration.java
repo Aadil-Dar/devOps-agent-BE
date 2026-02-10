@@ -33,7 +33,8 @@ public class ProjectConfiguration {
     private Long updatedAt;
     private String createdBy;
     private Map<String, String> metadata;
-    
+    private String backendLogGroupName;
+
     // DevOps AI Assist fields
     private List<String> logGroupNames; // CloudWatch log groups to monitor
     private List<String> serviceNames; // Service names for metrics
@@ -98,6 +99,11 @@ public class ProjectConfiguration {
     @DynamoDbAttribute("metadata")
     public Map<String, String> getMetadata() {
         return metadata;
+    }
+
+    @DynamoDbAttribute("backendLogGroupName")
+    public String getBackendLogGroupName() {
+        return backendLogGroupName;
     }
 
     @DynamoDbAttribute("logGroupNames")

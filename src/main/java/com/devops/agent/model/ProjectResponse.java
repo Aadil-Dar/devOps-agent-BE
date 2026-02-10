@@ -19,6 +19,7 @@ public class ProjectResponse {
     private String githubOwner;
     private String githubRepo;
     private String awsRegion;
+    private String backendLogGroupName;
     private Boolean enabled;
     private Long createdAt;
     private Long updatedAt;

@@ -22,7 +22,7 @@ public class DevOpsScheduledService {
     /**
      * Run health checks for all enabled projects every 10 minutes
      */
-    @Scheduled(fixedRate = 600000) // 10 minutes in milliseconds
+//    @Scheduled(fixedRate = 600000) // 10 minutes in milliseconds
     public void performScheduledHealthChecks() {
         log.info("Starting scheduled health checks for all enabled projects");
 

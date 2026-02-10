@@ -4,40 +4,79 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.util.List;
-import java.util.Map;
 
 /**
- * Response DTO for DevOps health check API
+ * Comprehensive DevOps health check response with predictions and insights
  */
 @Value
 @Builder
 public class DevOpsHealthCheckResponse {
-    String riskLevel; // LOW, MEDIUM, HIGH, CRITICAL
-    String summary;
-    List<String> recommendations;
-    PredictionDetails predictions;
-    Integer logCount;
-    Integer errorCount;
-    Integer warningCount;
-    List<MetricTrend> metricTrends;
-    Long timestamp;
+    List<FailingService> topFailingServices;
+    List<ErrorTrend> errorTrends;
+    List<SlowApi> slowApis;
+    List<PredictedFailure> predictedFailures;
+    List<Recommendation> recommendations;
 
     @Value
     @Builder
-    public static class PredictionDetails {
-        String timeframe; // "within 2 hours", "within 24 hours", etc.
-        Double likelihood; // 0.0 to 1.0
-        String rootCause;
+    public static class FailingService {
+        String name;
+        Integer failureCount;
+        Double failureRate;
+        String trend;           // up|down|stable
+        Double trendValue;
+        String lastFailure;
+        Integer criticalErrors;
+        String status;          // critical|warning|stable
     }
 
     @Value
     @Builder
-    public static class MetricTrend {
-        String serviceName;
-        String metricName;
-        Double currentValue;
-        Double averageValue;
-        String trend; // INCREASING, STABLE, DECREASING
-        String unit;
+    public static class ErrorTrend {
+        String timeframe;
+        Integer errors;
+        Integer warnings;
+        String change;
+        String severity;        // high|medium|low
+        String peakTime;
+    }
+
+    @Value
+    @Builder
+    public static class SlowApi {
+        String endpoint;
+        Integer avgResponseTime;
+        Integer p95ResponseTime;
+        Integer p99ResponseTime;
+        Integer requestCount;
+        Double errorRate;
+        String status;          // critical|warning|healthy
+        String slowestRegion;
+    }
+
+    @Value
+    @Builder
+    public static class PredictedFailure {
+        String service;
+        String prediction;
+        Integer probability;
+        String timeframe;
+        String impact;
+        String affectedUsers;
+        String preventiveAction;
+        String severity;        // critical|high|medium
+    }
+
+    @Value
+    @Builder
+    public static class Recommendation {
+        String title;
+        String priority;        // critical|high|medium
+        String impact;
+        String effort;
+        String estimatedTime;
+        String category;
+        List<String> steps;
+        String roi;
     }
 }
